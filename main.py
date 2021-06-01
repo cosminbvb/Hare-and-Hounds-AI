@@ -339,6 +339,16 @@ def afis_variante():
     print("  1-4-7\n /|\\|/|\\\n0-2-5-8-10\n \\|/|\\|/\n  3-6-9\n")
 
 
+def mutare_valida(matr, coord_piesa, coord_pozitie_noua):
+    if matr[coord_piesa[0]][coord_piesa[1]] != Joc.JMIN:
+        return False
+    if matr[coord_pozitie_noua[0]][coord_pozitie_noua[1]] != Joc.GOL:
+        return False
+    if coord_pozitie_noua not in mutari_posibile(Joc.JMIN, *coord_piesa):
+        return False
+    return True
+
+
 def main():
     # initializare algoritm
     raspuns_valid = False
@@ -376,7 +386,7 @@ def main():
     while True:
         if stare_curenta.j_curent == Joc.JMIN:
             # muta jucatorul
-            print("Acum muta utilizatorul cu ", stare_curenta.j_curent)
+            print("Acum muta utilizatorul cu", stare_curenta.j_curent)
             print("Alege piesa pe care vrei sa o muti si noua ei pozitie")
             afis_variante()
             raspuns_valid = False
@@ -388,9 +398,7 @@ def main():
                     if pozitie_piesa in range(11) and pozitie_noua in range(11):
                         coord_piesa = vector_pozitii[pozitie_piesa]
                         coord_pozitie_noua = vector_pozitii[pozitie_noua]
-                        if stare_curenta.tabla_joc.matr[coord_piesa[0]][coord_piesa[1]] == Joc.JMIN and \
-                                stare_curenta.tabla_joc.matr[coord_pozitie_noua[0]][coord_pozitie_noua[1]] == Joc.GOL:
-                            # TODO verifica daca mutarea e valida
+                        if mutare_valida(stare_curenta.tabla_joc.matr, coord_piesa, coord_pozitie_noua):
                             raspuns_valid = True
                         else:
                             print("Mutare invalida.")
@@ -419,7 +427,7 @@ def main():
         else:  # jucatorul e JMAX (calculatorul)
             # Mutare calculator
 
-            print("Acum muta calculatorul cu ", stare_curenta.j_curent)
+            print("Acum muta calculatorul cu", stare_curenta.j_curent)
             # preiau timpul in milisecunde de dinainte de mutare
             t_inainte = int(round(time.time() * 1000))
 
