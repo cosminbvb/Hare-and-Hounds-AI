@@ -4,7 +4,7 @@ import time
 import copy
 import pygame
 
-ADANCIME_MAX = 6
+ADANCIME_MAX = 1
 
 
 def distEuclid(p0, p1):
@@ -547,9 +547,9 @@ def deseneaza_alegeri(display):
         indiceSelectat=1,
     )
     label_player = font.render("Player: ", True, (0, 0, 0))
-    display.blit(label_player, (30, 105))
+    display.blit(label_player, (30, 90))
     btn_juc = GrupButoane(
-        top=100,
+        top=85,
         left=100,
         listaButoane=[
             Buton(display=display, w=80, h=30, text="Hounds", valoare="hound"),
@@ -557,9 +557,21 @@ def deseneaza_alegeri(display):
         ],
         indiceSelectat=0,
     )
+    label_algo = font.render("Difficulty: ", True, (0, 0, 0))
+    display.blit(label_algo, (20, 140))
+    btn_dif = GrupButoane(
+        top=135,
+        left=100,
+        listaButoane=[
+            Buton(display=display, w=80, h=30, text="Easy", valoare="1"),
+            Buton(display=display, w=80, h=30, text="Medium", valoare="3"),
+            Buton(display=display, w=80, h=30, text="Hard", valoare="6")
+        ],
+        indiceSelectat=1,
+    )
     ok = Buton(
         display=display,
-        top=170,
+        top=185,
         left=30,
         w=60,
         h=30,
@@ -568,6 +580,7 @@ def deseneaza_alegeri(display):
     )
     btn_alg.deseneaza()
     btn_juc.deseneaza()
+    btn_dif.deseneaza()
     ok.deseneaza()
     while True:
         for ev in pygame.event.get():
@@ -578,19 +591,23 @@ def deseneaza_alegeri(display):
                 pos = pygame.mouse.get_pos()
                 if not btn_alg.selecteazaDupacoord(pos):
                     if not btn_juc.selecteazaDupacoord(pos):
-                        if ok.selecteazaDupacoord(pos):
-                            return btn_juc.getValoare(), btn_alg.getValoare()
+                        if not btn_dif.selecteazaDupacoord(pos):
+                            if ok.selecteazaDupacoord(pos):
+                                return btn_juc.getValoare(), btn_alg.getValoare(), btn_dif.getValoare()
         pygame.display.update()
 
 
 def main():
+    global ADANCIME_MAX
+
     pygame.init()
     pygame.display.set_caption("Hare and Hounds - Petrescu Cosmin 243")
     display = pygame.display.set_mode(size=(450, 280))
 
     # Afisam meniul si setam alegerile (piesa si algoritmul)
-    Joc.JMIN, tip_algoritm = deseneaza_alegeri(display)
-    print(f"Piesa user = {Joc.JMIN}, Algoritm = {tip_algoritm}")
+    Joc.JMIN, tip_algoritm, adancime = deseneaza_alegeri(display)
+    ADANCIME_MAX = int(adancime)  # setam dificultatea jocului (adancimea maxima, care initial e string)
+    print(f"Piesa user = {Joc.JMIN}, Algoritm = {tip_algoritm}, Adancime Maxima = {ADANCIME_MAX}")
     Joc.JMAX = "hare" if Joc.JMIN == "hound" else "hound"
 
     # initializam GUI ul pentru gameplay
