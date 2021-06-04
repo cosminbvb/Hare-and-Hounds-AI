@@ -1,7 +1,16 @@
+import math
+import sys
 import time
 import copy
+import pygame
 
-ADANCIME_MAX = 6
+ADANCIME_MAX = 1
+
+
+def distEuclid(p0, p1):
+    (x0, y0) = p0
+    (x1, y1) = p1
+    return math.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
 
 
 def in_bounds(i, j):
@@ -46,6 +55,22 @@ class Joc:
     JMAX = None
     GOL = "*"
 
+    # GUI:
+    display = None
+    noduri = None
+    muchii = None
+    hound_img = None
+    hare_img = None
+    selected_img = None
+    scalare = None
+    translatie = None
+    razaPct = None
+    razaPiesa = None
+    diametruPiesa = None
+    coordonateNoduri = None
+    culoareEcran, culoareLinii = None, None
+    nodPiesaSelectata = None
+
     def __init__(self, tabla=None):
         if tabla is not None:
             self.matr = tabla
@@ -55,6 +80,66 @@ class Joc:
             self.matr[0][1] = "hound"
             self.matr[2][1] = "hound"
             self.matr[1][4] = "hare"
+
+    @classmethod
+    def initialize_GUI(cls, display):
+        # initializam proprietati ale clasei pentru GUI
+        cls.display = display
+        # nodurile sunt de forma (coloana, linie)
+        cls.noduri = [(0, 1), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2), (3, 0), (3, 1), (3, 2), (4, 1)]
+        # muchiile sunt de forma (indice nod1, indice nod2), unde indicele este cel corespunzator din vectorul de noduri
+        cls.muchii = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 4), (1, 5), (2, 3), (2, 5), (3, 5), (3, 6), (4, 5),
+                      (4, 7), (5, 6), (5, 7), (5, 8), (5, 9), (6, 9), (7, 8), (7, 10), (8, 9), (8, 10), (9, 10)]
+        cls.hound_img = pygame.image.load('assets/hound.png')
+        cls.hare_img = pygame.image.load('assets/hare.png')
+        cls.selected_img = pygame.image.load('assets/selected.png')
+        cls.scalare = 100
+        cls.translatie = 20
+        cls.razaPct = 10
+        cls.razaPiesa = 20
+        cls.diametruPiesa = 2 * cls.razaPiesa
+        cls.hound_img = pygame.transform.scale(cls.hound_img, (cls.diametruPiesa, cls.diametruPiesa))
+        cls.hare_img = pygame.transform.scale(cls.hare_img, (cls.diametruPiesa, cls.diametruPiesa))
+        cls.selected_img = pygame.transform.scale(cls.selected_img, (cls.diametruPiesa, cls.diametruPiesa))
+        cls.coordonateNoduri = [[cls.translatie + cls.scalare * x for x in nod] for nod in cls.noduri]
+        cls.culoareEcran = (255, 255, 255)
+        cls.culoareLinii = (0, 0, 0)
+
+    def draw(self):
+        # functia deseneaza matricea jocului
+        self.__class__.display.fill(self.__class__.culoareEcran)
+        # desenam nodurile:
+        for nod in self.__class__.coordonateNoduri:
+            pygame.draw.circle(surface=self.__class__.display, color=self.__class__.culoareLinii,
+                               center=nod, radius=self.__class__.razaPct, width=0)
+            # width=0 face un cerc plin
+        # desenam muchiile:
+        for muchie in self.__class__.muchii:
+            p0 = self.__class__.coordonateNoduri[muchie[0]]
+            p1 = self.__class__.coordonateNoduri[muchie[1]]
+            pygame.draw.line(surface=self.__class__.display, color=self.__class__.culoareLinii,
+                             start_pos=p0, end_pos=p1, width=5)
+
+        for i in range(self.__class__.NR_LINII):
+            for j in range(self.__class__.NR_COLOANE):
+                # tranformam coordonatele din matrice in coordonate fizice pentru GUI
+                coord = [self.__class__.translatie + self.__class__.scalare * x for x in [j, i]]
+                # pune simbolul unui hound la locatia corespunzatoare
+                if self.matr[i][j] == "hound":
+                    self.__class__.display.blit(self.__class__.hound_img,
+                                                (coord[0] - self.__class__.razaPiesa,
+                                                 coord[1] - self.__class__.razaPiesa))
+                # asemanator pt hare
+                elif self.matr[i][j] == "hare":
+                    self.__class__.display.blit(self.__class__.hare_img,
+                                                (coord[0] - self.__class__.razaPiesa,
+                                                 coord[1] - self.__class__.razaPiesa))
+        # daca exista vreo piesa selectata, o coloram
+        if self.__class__.nodPiesaSelectata:
+            self.__class__.display.blit(self.__class__.selected_img,
+                                        (self.__class__.nodPiesaSelectata[0] - self.__class__.razaPiesa,
+                                         self.__class__.nodPiesaSelectata[1] - self.__class__.razaPiesa))
+        pygame.display.update()  # update GUI
 
     @classmethod
     def jucator_opus(cls, jucator):
@@ -249,9 +334,6 @@ class Stare:
         return sir
 
 
-""" Algoritmul MinMax """
-
-
 def min_max(stare):
     # daca sunt la o frunza in arborele minimax sau la o stare finala
     if stare.adancime == 0 or stare.tabla_joc.final():
@@ -336,10 +418,14 @@ def afis_daca_final(stare_curenta):
 
 
 def afis_variante():
+    # folosit pentru alegerile userului din consola
     print("  1-4-7\n /|\\|/|\\\n0-2-5-8-10\n \\|/|\\|/\n  3-6-9\n")
 
 
 def mutare_valida(matr, coord_piesa, coord_pozitie_noua):
+    # matr - matricea jocului
+    # coord_piesa - locatie sursa
+    # coord_pozitie_noua - locatie destinatie
     if matr[coord_piesa[0]][coord_piesa[1]] != Joc.JMIN:
         return False
     if matr[coord_pozitie_noua[0]][coord_pozitie_noua[1]] != Joc.GOL:
@@ -349,81 +435,255 @@ def mutare_valida(matr, coord_piesa, coord_pozitie_noua):
     return True
 
 
-def main():
-    # initializare algoritm
-    raspuns_valid = False
+def convert_coordinates_to_matrix_location(coord):
+    # convertim coordonatele fizice la coordonatele din matricea jocului
+    # trebuie sa aplicam operatia inversa pentru coordonate
+    # iar coordonatele isi schimba ordinea (deoarece in GUI sunt de forma (coloana, linie))
+    return [round((x - Joc.translatie)/Joc.scalare) for x in [coord[1], coord[0]]]
 
-    while not raspuns_valid:
-        tip_algoritm = input(
-            "Algoritmul folosit? (raspundeti cu 1 sau 2)\n 1.Minimax\n 2.Alpha-beta\n "
-        )
-        if tip_algoritm in ["1", "2"]:
-            raspuns_valid = True
-        else:
-            print("Nu ati ales o varianta corecta.")
-    # initializare jucatori
-    raspuns_valid = False
-    while not raspuns_valid:
-        Joc.JMIN = input("Doriti sa jucati cu hare sau cu hounds? (hare / hound)\n").lower()
-        if Joc.JMIN in ["hare", "hound"]:
-            raspuns_valid = True
-        else:
-            print("Raspunsul trebuie sa fie hare sau hound.")
+
+### Classes for GUI Menu: ###
+class Buton:
+    def __init__(
+            self,
+            display=None,
+            left=0,
+            top=0,
+            w=0,
+            h=0,
+            culoareFundal=(255, 255, 255),
+            culoareFundalSel=(243, 62, 62),
+            text="",
+            font="arial",
+            fontDimensiune=16,
+            culoareText=(0, 0, 0),
+            valoare="",
+    ):
+        self.display = display
+        self.left = left
+        self.top = top
+        self.culoareFundal = culoareFundal
+        self.culoareFundalSel = culoareFundalSel
+        self.text = text
+        self.font = font
+        self.w = w
+        self.h = h
+        self.selectat = False
+        self.fontDimensiune = fontDimensiune
+        self.culoareText = culoareText
+        fontObj = pygame.font.SysFont(self.font, self.fontDimensiune)
+        self.textRandat = fontObj.render(self.text, True, self.culoareText)
+        self.dreptunghi = pygame.Rect(left, top, w, h)
+        self.dreptunghiText = self.textRandat.get_rect(center=self.dreptunghi.center)
+        self.valoare = valoare
+
+    def selecteaza(self, sel):
+        self.selectat = sel
+        self.deseneaza()
+
+    def selecteazaDupacoord(self, coord):
+        if self.dreptunghi.collidepoint(coord):
+            self.selecteaza(True)
+            return True
+        return False
+
+    def updateDreptunghi(self):
+        self.dreptunghi.left = self.left
+        self.dreptunghi.top = self.top
+        self.dreptunghiText = self.textRandat.get_rect(center=self.dreptunghi.center)
+
+    def deseneaza(self):
+        culoareF = self.culoareFundalSel if self.selectat else self.culoareFundal
+        pygame.draw.rect(self.display, culoareF, self.dreptunghi)
+        self.display.blit(self.textRandat, self.dreptunghiText)
+
+
+class GrupButoane:
+    def __init__(
+            self, listaButoane=[], indiceSelectat=0, spatiuButoane=10, left=0, top=0
+    ):
+        self.listaButoane = listaButoane
+        self.indiceSelectat = indiceSelectat
+        self.listaButoane[self.indiceSelectat].selectat = True
+        self.top = top
+        self.left = left
+        leftCurent = self.left
+        for b in self.listaButoane:
+            b.top = self.top
+            b.left = leftCurent
+            b.updateDreptunghi()
+            leftCurent += spatiuButoane + b.w
+
+    def selecteazaDupacoord(self, coord):
+        for ib, b in enumerate(self.listaButoane):
+            if b.selecteazaDupacoord(coord) and ib != self.indiceSelectat:
+                self.listaButoane[self.indiceSelectat].selecteaza(False)
+                self.indiceSelectat = ib
+                return True
+        return False
+
+    def deseneaza(self):
+        # atentie, nu face wrap
+        for b in self.listaButoane:
+            b.deseneaza()
+
+    def getValoare(self):
+        return self.listaButoane[self.indiceSelectat].valoare
+
+
+### GUI Menu: ###
+def deseneaza_alegeri(display):
+    display.fill((255, 255, 255))
+    font = pygame.font.SysFont("arial", 16, bold=True)
+    label_algo = font.render("Algorithm: ", True, (0, 0, 0))
+    display.blit(label_algo, (20, 35))
+    btn_alg = GrupButoane(
+        top=30,
+        left=100,
+        listaButoane=[
+            Buton(display=display, w=80, h=30, text="Minimax", valoare="minimax"),
+            Buton(display=display, w=80, h=30, text="Alpha-Beta", valoare="alphabeta"),
+        ],
+        indiceSelectat=1,
+    )
+    label_player = font.render("Player: ", True, (0, 0, 0))
+    display.blit(label_player, (30, 90))
+    btn_juc = GrupButoane(
+        top=85,
+        left=100,
+        listaButoane=[
+            Buton(display=display, w=80, h=30, text="Hounds", valoare="hound"),
+            Buton(display=display, w=80, h=30, text="Hare", valoare="hare"),
+        ],
+        indiceSelectat=0,
+    )
+    label_algo = font.render("Difficulty: ", True, (0, 0, 0))
+    display.blit(label_algo, (20, 140))
+    btn_dif = GrupButoane(
+        top=135,
+        left=100,
+        listaButoane=[
+            Buton(display=display, w=80, h=30, text="Easy", valoare="1"),
+            Buton(display=display, w=80, h=30, text="Medium", valoare="3"),
+            Buton(display=display, w=80, h=30, text="Hard", valoare="6")
+        ],
+        indiceSelectat=1,
+    )
+    ok = Buton(
+        display=display,
+        top=185,
+        left=30,
+        w=60,
+        h=30,
+        text="Play",
+        culoareFundal=(243, 62, 62),
+    )
+    btn_alg.deseneaza()
+    btn_juc.deseneaza()
+    btn_dif.deseneaza()
+    ok.deseneaza()
+    while True:
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                if not btn_alg.selecteazaDupacoord(pos):
+                    if not btn_juc.selecteazaDupacoord(pos):
+                        if not btn_dif.selecteazaDupacoord(pos):
+                            if ok.selecteazaDupacoord(pos):
+                                return btn_juc.getValoare(), btn_alg.getValoare(), btn_dif.getValoare()
+        pygame.display.update()
+
+
+def main():
+    global ADANCIME_MAX
+
+    pygame.init()
+    pygame.display.set_caption("Hare and Hounds - Petrescu Cosmin 243")
+    display = pygame.display.set_mode(size=(450, 280))
+
+    # Afisam meniul si setam alegerile (piesa si algoritmul)
+    Joc.JMIN, tip_algoritm, adancime = deseneaza_alegeri(display)
+    ADANCIME_MAX = int(adancime)  # setam dificultatea jocului (adancimea maxima, care initial e string)
+    print(f"Piesa user = {Joc.JMIN}, Algoritm = {tip_algoritm}, Adancime Maxima = {ADANCIME_MAX}")
     Joc.JMAX = "hare" if Joc.JMIN == "hound" else "hound"
-    # expresie= val_true if conditie else val_false  (conditie? val_true: val_false)
+
+    # initializam GUI ul pentru gameplay
+    Joc.initialize_GUI(display)
 
     # initializare tabla
     tabla_curenta = Joc()
-    # apelam constructorul
+
     print("Tabla initiala")
     print(str(tabla_curenta))
 
     # creare stare initiala
     stare_curenta = Stare(tabla_curenta, "hound", ADANCIME_MAX)  # conform wikipedia, hounds move first.
 
-    # vector pozitii mapeaza indicii din figura ajutatoare la pozitiile din matrice
-    vector_pozitii = [[1, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2], [0, 3], [1, 3], [2, 3], [1, 4]]
+    tabla_curenta.draw()  # desenam tabla initiala
+
     while True:
         if stare_curenta.j_curent == Joc.JMIN:
             # muta jucatorul
-            print("Acum muta utilizatorul cu", stare_curenta.j_curent)
-            print("Alege piesa pe care vrei sa o muti si noua ei pozitie")
-            afis_variante()
-            raspuns_valid = False
-            while not raspuns_valid:
-                try:
-                    pozitie_piesa = int(input("Piesa (indice): "))
-                    pozitie_noua = int(input("Pozitie noua (indice): "))
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()  # pozitia eventului
+                    for nod in Joc.coordonateNoduri:  # pentru fiecare nod din coordonate
+                        # verificam daca eventul este in raza de actiune a nodului:
+                        if distEuclid(pos, nod) <= Joc.razaPct:
+                            # daca am gasit nodul asupra caruia s-a activat un event
+                            # convertim coordonatele fizice la coordonatele din matricea jocului:
+                            pos_matrice = convert_coordinates_to_matrix_location(nod)
+                            # verificam daca la pozitia unde s-a activat eventul se afla piesa userului:
+                            if stare_curenta.tabla_joc.matr[pos_matrice[0]][pos_matrice[1]] == Joc.JMIN:
+                                # daca nu avem nimic selectat / avem selectat un nod diferit, actualizam nodul selectat
+                                if Joc.nodPiesaSelectata is None or Joc.nodPiesaSelectata != nod:
+                                    Joc.nodPiesaSelectata = nod
+                                else:
+                                    # daca am selectat nodul deja selectat => il deselectam
+                                    Joc.nodPiesaSelectata = None
+                            # verificam daca la pozitia unde s-a activat eventul se afla un nod gol si avem deja un
+                            # nod selectat:
+                            if stare_curenta.tabla_joc.matr[pos_matrice[0]][pos_matrice[1]] == Joc.GOL and \
+                                    Joc.nodPiesaSelectata is not None:
+                                # avem o piesa selectata si am dat click pe un nod gol
+                                # obtinem coordonatele sursa din matricea jocului:
+                                pos_sursa = convert_coordinates_to_matrix_location(Joc.nodPiesaSelectata)
+                                # obtinem coordonatele destinatie din matricea jocului:
+                                pos_dest = pos_matrice  # am redenumit pentru a urmari mai usor
 
-                    if pozitie_piesa in range(11) and pozitie_noua in range(11):
-                        coord_piesa = vector_pozitii[pozitie_piesa]
-                        coord_pozitie_noua = vector_pozitii[pozitie_noua]
-                        if mutare_valida(stare_curenta.tabla_joc.matr, coord_piesa, coord_pozitie_noua):
-                            raspuns_valid = True
-                        else:
-                            print("Mutare invalida.")
-                    else:
-                        print("Pozitie invalida")
-                except ValueError:
-                    print("Indicii trebuie sa fie numere intregi")
+                                # trebuie sa verificam inainte daca mutarea e valida
+                                if mutare_valida(stare_curenta.tabla_joc.matr, pos_sursa, pos_dest):
+                                    # eliberam pozitia sursa si punem piesa pe pozitia destinatie, in matricea jocului:
+                                    stare_curenta.tabla_joc.matr[pos_sursa[0]][pos_sursa[1]] = Joc.GOL
+                                    stare_curenta.tabla_joc.matr[pos_dest[0]][pos_dest[1]] = Joc.JMIN
 
-            # dupa iesirea din while sigur am valide cele doua pozitii
-            # deci pot plasa simbolul pe "tabla de joc"
-            stare_curenta.tabla_joc.matr[coord_piesa[0]][coord_piesa[1]] = Joc.GOL
-            stare_curenta.tabla_joc.matr[coord_pozitie_noua[0]][coord_pozitie_noua[1]] = Joc.JMIN
+                                    # afisarea starii jocului in urma mutarii utilizatorului
+                                    print("\nTabla dupa mutarea jucatorului")
+                                    print(str(stare_curenta))
 
-            # afisarea starii jocului in urma mutarii utilizatorului
-            print("\nTabla dupa mutarea jucatorului")
-            print(str(stare_curenta))
-            # testez daca jocul a ajuns intr-o stare finala
-            # si afisez un mesaj corespunzator in caz ca da
-            if afis_daca_final(stare_curenta):
-                break
+                                    # testam daca jocul a ajuns in stare finala:
+                                    afis_daca_final(stare_curenta)
 
-            # S-a realizat o mutare. Schimb jucatorul cu cel opus
-            stare_curenta.j_curent = Joc.jucator_opus(stare_curenta.j_curent)
+                                    # JMIN a mutat, schimbam jucatorul:
+                                    stare_curenta.j_curent = Joc.jucator_opus(stare_curenta.j_curent)
+
+                                    Joc.nodPiesaSelectata = None  # deselectam
+
+                                    break
+                            stare_curenta.tabla_joc.draw()  # update GUI
+                            break
+                if stare_curenta.j_curent == Joc.JMAX:
+                    # JMIN a terminat de mutat, putem sa iesim din listener
+                    break
 
         # --------------------------------
+
         else:  # jucatorul e JMAX (calculatorul)
             # Mutare calculator
 
@@ -432,9 +692,9 @@ def main():
             t_inainte = int(round(time.time() * 1000))
 
             # stare actualizata e starea mea curenta in care am setat stare_aleasa (mutarea urmatoare)
-            if tip_algoritm == "1":
+            if tip_algoritm == "minimax":
                 stare_actualizata = min_max(stare_curenta)
-            else:  # tip_algoritm==2
+            else:
                 stare_actualizata = alpha_beta(-500, 500, stare_curenta)
 
             # aici se face de fapt mutarea !!!
@@ -442,6 +702,8 @@ def main():
 
             print("Tabla dupa mutarea calculatorului")
             print(str(stare_curenta))
+
+            stare_curenta.tabla_joc.draw()  # update GUI
 
             # preiau timpul in milisecunde de dupa mutare
             t_dupa = int(round(time.time() * 1000))
@@ -459,3 +721,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # Listener pentru quit: (fara asta se inchide GUI ul cand castiga cineva)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
