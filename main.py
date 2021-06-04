@@ -146,12 +146,13 @@ class Joc:
         pygame.display.update()  # update GUI
 
     def draw_winner(self, jucator):
+        # displays a crown above the winning player(s)
         if jucator == "hare":
             hare = self.find_hare()
             coord = [self.__class__.translatie + self.__class__.scalare * x for x in [hare[1], hare[0]]]
             self.__class__.display.blit(self.__class__.winner_img,
                                         (coord[0] - self.__class__.razaPiesa,
-                                         coord[1] - 2*self.__class__.razaPiesa))
+                                         coord[1] - 2 * self.__class__.razaPiesa))
         else:
             hounds = self.find_hounds()
             for hound in hounds:
@@ -785,6 +786,8 @@ def main():
 
             # aici se face de fapt mutarea !!!
             stare_curenta.tabla_joc = stare_actualizata.stare_aleasa.tabla_joc
+
+            print(f"Estimarea pentru radacina arborelui: {stare_curenta.estimare}")
 
             total_number_of_moves += 1
 
