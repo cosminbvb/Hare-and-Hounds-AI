@@ -73,7 +73,7 @@ class Joc:
     culoareEcran, culoareLinii = None, None
     nodPiesaSelectata = None
 
-    def __init__(self, tabla=None):
+    def __init__(self, tabla=None, mutari_verticale_consecutive=0):
         if tabla is not None:
             self.matr = tabla
         else:
@@ -82,6 +82,9 @@ class Joc:
             self.matr[0][1] = "hound"
             self.matr[2][1] = "hound"
             self.matr[1][4] = "hare"
+
+        # TODO uncomment the following line for the anti-stall rule:
+        # self.mutari_verticale_consecutive = mutari_verticale_consecutive
 
     @classmethod
     def initialize_GUI(cls, display):
@@ -213,6 +216,12 @@ class Joc:
                 break
         if escaped:
             return "hare"
+
+        # TODO uncomment the following lines for the anti-stall rule
+        # cazul in care cainii au mutat de 10 ori consecutiv pe verticala (castiga tot hare)
+        # if self.mutari_verticale_consecutive >= 10:
+        #     return "hare"
+
         return False
 
     def mutari_jucator(self, jucator, i, j):
@@ -228,7 +237,18 @@ class Joc:
             copie_matr = copy.deepcopy(self.matr)
             copie_matr[i][j] = Joc.GOL
             copie_matr[p][q] = jucator
+
+            # TODO uncomment the following lines for the anti-stall rule:
+            # if jucator == "hound" and j == q:  # daca hounds au mutat pe verticala
+            #     l_mutari.append(Joc(copie_matr, self.mutari_verticale_consecutive + 1))
+            # elif jucator == "hound":
+            #     l_mutari.append(Joc(copie_matr))  # resetam nr de mutari verticale
+            # else:
+            #     l_mutari.append(Joc(copie_matr, self.mutari_verticale_consecutive))
+
+            # TODO comment the following line for the anti-stall rule:
             l_mutari.append(Joc(copie_matr))
+
         return l_mutari
 
     def mutari(self, jucator):
@@ -461,7 +481,7 @@ def afis_daca_final(stare_curenta):
     final = stare_curenta.tabla_joc.final()
     if final:
         print("A castigat " + final)
-        return True
+        return final
     return False
 
 
@@ -737,6 +757,13 @@ def main():
                                     stare_curenta.tabla_joc.matr[pos_sursa[0]][pos_sursa[1]] = Joc.GOL
                                     stare_curenta.tabla_joc.matr[pos_dest[0]][pos_dest[1]] = Joc.JMIN
 
+                                    # TODO uncomment the following lines for the anti-stall rule:
+                                    # # cazul mutarilor pe verticala:
+                                    # if Joc.JMIN == "hound" and pos_sursa[1] == pos_dest[1]:
+                                    #     stare_curenta.tabla_joc.mutari_verticale_consecutive += 1
+                                    # elif Joc.JMIN == "hound":
+                                    #     stare_curenta.tabla_joc.mutari_verticale_consecutive = 0
+
                                     # afisarea starii jocului in urma mutarii utilizatorului
                                     print("\nTabla dupa mutarea jucatorului")
                                     print(str(stare_curenta))
@@ -753,9 +780,10 @@ def main():
                                     total_number_of_moves += 1
 
                                     # testam daca jocul a ajuns in stare finala:
-                                    if afis_daca_final(stare_curenta):
+                                    winner = afis_daca_final(stare_curenta)
+                                    if winner:
                                         print_algorithm_time_stats(algorithm_time_array)
-                                        stare_curenta.tabla_joc.draw_winner(Joc.JMIN)
+                                        stare_curenta.tabla_joc.draw_winner(winner)
 
                                     # JMIN a mutat, schimbam jucatorul:
                                     stare_curenta.j_curent = Joc.jucator_opus(stare_curenta.j_curent)
@@ -805,9 +833,10 @@ def main():
 
             stare_curenta.tabla_joc.draw()  # update GUI
 
-            if afis_daca_final(stare_curenta):
+            winner = afis_daca_final(stare_curenta)
+            if winner:
                 print_algorithm_time_stats(algorithm_time_array)
-                stare_curenta.tabla_joc.draw_winner(Joc.JMAX)
+                stare_curenta.tabla_joc.draw_winner(winner)
                 break
 
             # S-a realizat o mutare. Schimb jucatorul cu cel opus
