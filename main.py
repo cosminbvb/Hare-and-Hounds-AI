@@ -4,7 +4,7 @@ import time
 import copy
 import pygame
 
-ADANCIME_MAX = 1
+ADANCIME_MAX = 3
 
 
 def distEuclid(p0, p1):
@@ -240,7 +240,31 @@ class Joc:
                     visited.add((pozitie[0], pozitie[1]))
         return len(visited)  # numarul de pozitii reachable
 
-    def pozitii_deschise(self, jucator):
+    # Estimarea 1
+    # numaram in mutari_valide cate mutari poate face iepurele din pozitia curenta
+    # cand jucatorul este hare, vrea sa maximizeze numarul de mutari pe care le poate face
+    # cand jucatorul este hounds, vrea sa minimizez numarul de mutari pe care le poate face iepurele,
+    #                             (i.e sa incolteasca iepurele), adica sa maximizeze -numarul de mutari
+    def estimare1(self, jucator):
+        hare = self.find_hare()
+        hounds = self.find_hounds()
+        mutari_posibile_hare = mutari_posibile("hare", *hare)
+        mutari_valabile_hare = 0
+        for mutare in mutari_posibile_hare:
+            if mutare not in hounds:
+                mutari_valabile_hare += 1
+        if jucator == "hare":
+            return mutari_valabile_hare
+        else:
+            return -mutari_valabile_hare
+
+    # Estimarea 2 - (Mai puternica)
+    # se face BFS incepand cu pozitia iepurelui, numarandu-se numarul total de noduri accesibile din graf
+    # cand jucatorul este hare, vrea sa maximizeze numarul total de noduri accesibile
+    # cand jucatorul este hounds, vrea sa minimizeze acest numar, adica sa maximizeze 11 - numarul de noduri accesibile
+    #                             (avem 11 noduri in total)
+    # Obs: Estimarea 1 se poate vedea ca o varianta mai slaba a estimarii 2, unde BFS-ul are range = 1
+    def estimare2(self, jucator):
         if jucator == "hare":
             return self.noduri_reachable()
         return 11 - self.noduri_reachable()
@@ -252,7 +276,10 @@ class Joc:
         elif t_final == self.__class__.JMIN:
             return -99 - adancime
         else:
-            return self.pozitii_deschise(self.__class__.JMAX)
+            # Estimarea 1
+            # return self.estimare1(self.__class__.JMAX)
+            # Estimarea 2
+            return self.estimare2(self.__class__.JMAX)
 
     def __str__(self):
         sir = "  "
