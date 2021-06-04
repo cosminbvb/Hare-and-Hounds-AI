@@ -3,6 +3,7 @@ import sys
 import time
 import copy
 import pygame
+import statistics
 
 ADANCIME_MAX = 3
 
@@ -62,6 +63,7 @@ class Joc:
     hound_img = None
     hare_img = None
     selected_img = None
+    winner_img = None
     scalare = None
     translatie = None
     razaPct = None
@@ -93,6 +95,7 @@ class Joc:
         cls.hound_img = pygame.image.load('assets/hound.png')
         cls.hare_img = pygame.image.load('assets/hare.png')
         cls.selected_img = pygame.image.load('assets/selected.png')
+        cls.winner_img = pygame.image.load('assets/winner.png')
         cls.scalare = 100
         cls.translatie = 20
         cls.razaPct = 10
@@ -101,6 +104,7 @@ class Joc:
         cls.hound_img = pygame.transform.scale(cls.hound_img, (cls.diametruPiesa, cls.diametruPiesa))
         cls.hare_img = pygame.transform.scale(cls.hare_img, (cls.diametruPiesa, cls.diametruPiesa))
         cls.selected_img = pygame.transform.scale(cls.selected_img, (cls.diametruPiesa, cls.diametruPiesa))
+        cls.winner_img = pygame.transform.scale(cls.winner_img, (cls.diametruPiesa, cls.diametruPiesa))
         cls.coordonateNoduri = [[cls.translatie + cls.scalare * x for x in nod] for nod in cls.noduri]
         cls.culoareEcran = (255, 255, 255)
         cls.culoareLinii = (0, 0, 0)
@@ -140,6 +144,22 @@ class Joc:
                                         (self.__class__.nodPiesaSelectata[0] - self.__class__.razaPiesa,
                                          self.__class__.nodPiesaSelectata[1] - self.__class__.razaPiesa))
         pygame.display.update()  # update GUI
+
+    def draw_winner(self, jucator):
+        if jucator == "hare":
+            hare = self.find_hare()
+            coord = [self.__class__.translatie + self.__class__.scalare * x for x in [hare[1], hare[0]]]
+            self.__class__.display.blit(self.__class__.winner_img,
+                                        (coord[0] - self.__class__.razaPiesa,
+                                         coord[1] - 2*self.__class__.razaPiesa))
+        else:
+            hounds = self.find_hounds()
+            for hound in hounds:
+                coord = [self.__class__.translatie + self.__class__.scalare * x for x in [hound[1], hound[0]]]
+                self.__class__.display.blit(self.__class__.winner_img,
+                                            (coord[0] - self.__class__.razaPiesa,
+                                             coord[1] - self.__class__.razaPiesa))
+        pygame.display.update()
 
     @classmethod
     def jucator_opus(cls, jucator):
@@ -469,6 +489,21 @@ def convert_coordinates_to_matrix_location(coord):
     return [round((x - Joc.translatie)/Joc.scalare) for x in [coord[1], coord[0]]]
 
 
+def print_algorithm_time_stats(time_array):
+    print(f"Timp maxim = {max(time_array)} ms\nTimp minim = {min(time_array)} ms\n"
+          f"Timp mediu = {statistics.mean(time_array)} ms\nMedina = {statistics.median(time_array)} ms\n")
+
+
+def print_final_stats(game_start_time, total_nr_of_moves):
+    game_end_time = int(round(time.time() * 1000))
+    print(
+        'Jocul a durat '
+        + str(game_end_time - game_start_time)
+        + " ms"
+    )
+    print(f'Numarul total de mutari = {total_nr_of_moves}')
+
+
 ### Classes for GUI Menu: ###
 class Buton:
     def __init__(
@@ -626,6 +661,8 @@ def deseneaza_alegeri(display):
 
 def main():
     global ADANCIME_MAX
+    global total_number_of_moves
+    global game_start
 
     pygame.init()
     pygame.display.set_caption("Hare and Hounds - Petrescu Cosmin 243")
@@ -651,11 +688,20 @@ def main():
 
     tabla_curenta.draw()  # desenam tabla initiala
 
+    algorithm_time_array = []  # retinem timpul stat de algoritm la fiecare mutare
+    start_counting = False  # helper pentru calcularea timpului de gandire al userului
     while True:
         if stare_curenta.j_curent == Joc.JMIN:
             # muta jucatorul
+
+            if not start_counting:
+                t_inainte = int(round(time.time() * 1000))
+                start_counting = True
+
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
+                    print_algorithm_time_stats(algorithm_time_array)
+                    print_final_stats(game_start, total_number_of_moves)
                     pygame.quit()
                     sys.exit()
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -694,8 +740,21 @@ def main():
                                     print("\nTabla dupa mutarea jucatorului")
                                     print(str(stare_curenta))
 
+                                    # preiau timpul in milisecunde de dupa mutare
+                                    t_dupa = int(round(time.time() * 1000))
+                                    start_counting = False
+                                    print(
+                                        'Userul a gandit timp de '
+                                        + str(t_dupa - t_inainte)
+                                        + " milisecunde."
+                                    )
+
+                                    total_number_of_moves += 1
+
                                     # testam daca jocul a ajuns in stare finala:
-                                    afis_daca_final(stare_curenta)
+                                    if afis_daca_final(stare_curenta):
+                                        print_algorithm_time_stats(algorithm_time_array)
+                                        stare_curenta.tabla_joc.draw_winner(Joc.JMIN)
 
                                     # JMIN a mutat, schimbam jucatorul:
                                     stare_curenta.j_curent = Joc.jucator_opus(stare_curenta.j_curent)
@@ -727,10 +786,10 @@ def main():
             # aici se face de fapt mutarea !!!
             stare_curenta.tabla_joc = stare_actualizata.stare_aleasa.tabla_joc
 
+            total_number_of_moves += 1
+
             print("Tabla dupa mutarea calculatorului")
             print(str(stare_curenta))
-
-            stare_curenta.tabla_joc.draw()  # update GUI
 
             # preiau timpul in milisecunde de dupa mutare
             t_dupa = int(round(time.time() * 1000))
@@ -739,7 +798,13 @@ def main():
                 + str(t_dupa - t_inainte)
                 + " milisecunde."
             )
+            algorithm_time_array.append(t_dupa - t_inainte)  # adaugam timpul corespunzator mutarii in array
+
+            stare_curenta.tabla_joc.draw()  # update GUI
+
             if afis_daca_final(stare_curenta):
+                print_algorithm_time_stats(algorithm_time_array)
+                stare_curenta.tabla_joc.draw_winner(Joc.JMAX)
                 break
 
             # S-a realizat o mutare. Schimb jucatorul cu cel opus
@@ -747,7 +812,15 @@ def main():
 
 
 if __name__ == "__main__":
+
+    total_number_of_moves = 0
+
+    game_start = int(round(time.time() * 1000))
+
     main()
+
+    print_final_stats(game_start, total_number_of_moves)
+
     # Listener pentru quit: (fara asta se inchide GUI ul cand castiga cineva)
     while True:
         for event in pygame.event.get():
