@@ -155,7 +155,7 @@ class Joc:
             coord = [self.__class__.translatie + self.__class__.scalare * x for x in [hare[1], hare[0]]]
             self.__class__.display.blit(self.__class__.winner_img,
                                         (coord[0] - self.__class__.razaPiesa,
-                                         coord[1] - 2 * self.__class__.razaPiesa))
+                                         coord[1] - self.__class__.razaPiesa))
         else:
             hounds = self.find_hounds()
             for hound in hounds:
