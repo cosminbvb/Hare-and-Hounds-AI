@@ -512,7 +512,7 @@ def convert_coordinates_to_matrix_location(coord):
 
 def print_algorithm_time_stats(time_array):
     print(f"Timp maxim = {max(time_array)} ms\nTimp minim = {min(time_array)} ms\n"
-          f"Timp mediu = {statistics.mean(time_array)} ms\nMedina = {statistics.median(time_array)} ms\n")
+          f"Timp mediu = {statistics.mean(time_array)} ms\nMediana = {statistics.median(time_array)} ms\n")
 
 
 def print_final_stats(game_start_time, total_nr_of_moves):
