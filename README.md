@@ -12,7 +12,7 @@ Implemented **Minimax** and **Alpha–beta pruning** algorithms into the game of
 - If the Hounds move vertically ten moves in a row, they are considered to be "stalling" and the Hare wins
 
 ### GUI:
-![](https://github.com/cosminbvb/Hare-and-Hounds-AI/blob/main/demo.gif)
+![](https://github.com/cosminbvb/Hare-and-Hounds-AI/blob/master/demo.gif)
 
 ### Score estimation for non-final states: 
 ##### Estimation 2 (stronger)
